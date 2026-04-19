@@ -1,82 +1,90 @@
-# Tugas Praktikum Minggu 5 - Navigasi Antar Layar (Navigation Compose)
+# Tugas Praktikum Minggu 6 - Akses Jaringan dan Pengambilan Data API (Ktor)
 
 * **Nama : Muhammad Bimastiar**
 * **NIM : 123140211**
 
 ## Deskripsi Tugas
 
-Mengembangkan proyek aplikasi dari minggu sebelumnya dengan mengimplementasikan Jetpack Navigation Compose untuk membuat perpindahan antar layar (*multi-screen*). Berikut adalah fitur dan ketentuan yang diimplementasikan pada praktikum ini:
+Mengembangkan proyek aplikasi dari minggu sebelumnya dengan menambahkan fitur untuk mengambil data dari internet (REST API) menggunakan **Ktor HTTP Client** pada Kotlin Multiplatform. Berikut adalah fitur dan ketentuan yang diimplementasikan pada praktikum ini:
 
-1.  **Bottom Navigation:**
-    - Menambahkan navigasi bawah dengan 3 tab: `Notes`, `Favorites`, dan `Profile`.
-    - Mengintegrasikan `ProfileScreen` dari tugas minggu lalu ke dalam tab Profile.
-2.  **Navigasi List ke Detail (Passing Arguments):**
-    - Menerapkan navigasi dari layar *Note List* ke *Note Detail* dengan mengirimkan argument `noteId` bertipe Integer.
-3.  **Floating Action Button (FAB):**
-    - Menambahkan FAB pada layar utama Notes untuk melakukan navigasi ke layar *Add Note* (`AddNoteScreen`).
-4.  **Navigasi Kembali (Back Navigation):**
-    - Mengimplementasikan fungsi `popBackStack()` agar pengguna dapat kembali ke layar sebelumnya dengan benar (proper) tanpa penumpukan *stack* layar yang berlebihan.
-5.  **Navigasi Edit Note:**
-    - Menambahkan navigasi dari *Note Detail* ke *Edit Note screen* yang juga mengimplementasikan *passing argument* `noteId`.
+1.  **Konfigurasi Ktor & Serialization:**
+    - Menambahkan *dependency* Ktor dan mendaftarkan *plugin* `kotlinx.serialization` pada Gradle untuk membaca format JSON.
+    - Menambahkan izin akses internet (`android.permission.INTERNET`) pada `AndroidManifest.xml`.
+2.  **Pemodelan Data & Parsing JSON:**
+    - Membuat *data class* `NewsArticle` yang ditandai dengan anotasi `@Serializable` agar JSON dari API dapat diubah menjadi list objek Kotlin.
+3.  **State Management (Loading, Success, Error):**
+    - Mengimplementasikan `sealed class NewsUiState` untuk mengelola tiga kondisi layar: saat mengambil data (*Loading*), saat berhasil (*Success*), dan saat gagal/internet terputus (*Error*).
+4.  **Repository Pattern:**
+    - Membuat `NewsRepository` yang bertugas khusus menembak endpoint API (`https://jsonplaceholder.typicode.com/posts`) dan mengembalikan data *List*.
+5.  **Integrasi ViewModel & UI (Tab News):**
+    - Menggunakan `viewModelScope.launch` pada `NewsViewModel` untuk mengambil data secara *asynchronous* (Coroutines).
+    - Menampilkan data pada `NewsListScreen` menggunakan `LazyColumn` yang diletakkan pada salah satu menu di *Bottom Navigation* (Tab News). Dilengkapi juga dengan tombol *Refresh*.
 
 ## Struktur Folder
 
-Proyek ini memperluas struktur MVVM sebelumnya dengan menambahkan *package* khusus untuk komponen UI tambahan dan pengaturan rute navigasi. Berikut adalah susunan *package* utamanya:
+Proyek ini mempertahankan struktur dari tugas minggu sebelumnya dengan penambahan file khusus untuk menangani *networking* dan data berita. Berikut adalah susunan *package* utamanya:
 
 ```text
 composeApp/src/commonMain/kotlin/org/example/project/
-├── App.kt                 # Entry point, inisialisasi NavHost, NavController, & Scaffold (BottomBar)
+├── App.kt                 # Entry point & inisialisasi NavHost/BottomBar
 ├── components/
-│   └── BottomNav.kt       # Komponen UI untuk Bottom Navigation
+│   └── BottomNav.kt       # Komponen UI Bottom Navigation (Navigasi antar tab)
 ├── data/
-│   └── ProfileUiState.kt  # (Dari Praktikum 4) Data class penampung state
+│   ├── NewsData.kt        # Berisi Model (NewsArticle), State (NewsUiState), & NewsRepository
+│   └── ProfileUiState.kt  # (Dari praktikum sebelumnya)
 ├── navigation/
-│   └── Routes.kt          # Definisi Sealed Class untuk rute layar dan argument-nya
+│   └── Routes.kt          # Definisi Rute layar untuk navigasi
 ├── ui/
-│   ├── NotesScreens.kt    # Kumpulan layar baru: NoteList, NoteDetail, AddNote, EditNote, Favorites
-│   └── ProfileScreen.kt   # (Dari Praktikum 4) Layar profil pengguna
+│   ├── NewsScreens.kt     # Layar utama berita (NewsListScreen) dan layar detailnya
+│   ├── NotesScreens.kt    # (Dari praktikum sebelumnya)
+│   └── ProfileScreen.kt   # (Dari praktikum sebelumnya)
 └── viewmodel/
-    └── ProfileViewModel.kt# (Dari Praktikum 4) State holder untuk layar profil
+    ├── NewsViewModel.kt   # State holder untuk mengambil data API dan menyimpannya ke UI State
+    └── ProfileViewModel.kt# (Dari praktikum sebelumnya)
 ```
 
 ## Cara Menjalankan Aplikasi (Langkah-langkah)
 
-Proyek ini menggunakan basis **Jetpack Compose Multiplatform**. Berikut adalah panduan langkah demi langkah untuk menjalankannya:
+Proyek ini menggunakan basis **Jetpack Compose Multiplatform**. Berikut panduan untuk menjalankannya:
 
-1.  **Persiapan IDE:** Pastikan Anda menggunakan **Android Studio** versi terbaru.
+1.  **Persiapan:** Pastikan Anda menggunakan **Android Studio** versi terbaru dan perangkat/emulator **terhubung ke internet**.
 2.  **Buka Proyek:** Pilih menu `File > Open...` dan arahkan ke folder proyek ini.
-3.  **Tunggu Gradle Sync:** Pastikan *dependency* `navigation-compose` sudah terunduh dengan melihat indikator sinkronisasi Gradle di pojok kanan bawah IDE.
+3.  **Tunggu Gradle Sync:** Pastikan *dependency* Ktor dan plugin Serialization sudah terunduh dengan melihat indikator sinkronisasi Gradle (atau klik *Sync Now*).
 4.  **Jalankan Aplikasi:** - Untuk **Android**: Pilih emulator atau perangkat fisik Android Anda, lalu klik tombol **Run** (segitiga hijau) atau tekan `Shift + F10`.
-    - Untuk **Desktop**: Pilih konfigurasi Desktop (contoh: `jvmRun`), lalu tekan tombol **Run**.
 5.  **Uji Coba Fitur:** Setelah jendela aplikasi terbuka:
-    - Gunakan **Bottom Navigation** di bagian bawah layar untuk berpindah antara tab *Notes*, *Favorites*, dan *Profile*.
-    - Pada tab *Notes*, klik **Floating Action Button (+)** untuk berpindah ke layar Tambah Catatan.
-    - Pada tab *Notes*, klik salah satu **Item Catatan** untuk masuk ke layar Detail (perhatikan `noteId` yang dikirim).
-    - Di layar Detail, klik tombol **Edit** untuk masuk ke form pengubahan data.
-    - Gunakan tombol **Kembali (Back)** untuk menguji implementasi `popBackStack()`.
+    - Gunakan **Bottom Navigation** untuk masuk ke tab **News** (Berita).
+    - Aplikasi akan menampilkan status *Loading* ("Sedang mengambil berita...").
+    - Jika sukses, layar akan menampilkan daftar artikel menggunakan `LazyColumn`.
+    - Coba matikan internet pada emulator/HP Anda, lalu klik **Icon Refresh** di pojok kanan atas. Layar akan berubah menampilkan pesan *Error* "Gagal Memuat 😭".
+    - Klik salah satu *Card* berita untuk masuk ke halaman detail yang menampilkan teks lengkapnya.
 
 ## Hasil
 
-### 1\. Tampilan Bottom Navigation (Tab Notes / Layar Utama)
+### 1\. Tampilan State Success (Daftar Berita)
 
-*(Aplikasi menampilkan daftar catatan dan Floating Action Button)*
+*(Aplikasi berhasil mengambil data JSON dari API dan memetakannya ke dalam LazyColumn)*
 
-<img width="284" height="618" alt="image" src="https://github.com/user-attachments/assets/baa89c6d-5c33-4222-8ce3-935422f0df9d" />
 
-### 2\. Tampilan Navigasi Detail & Passing Argument
 
-*(Layar NoteDetailScreen yang berhasil menangkap `noteId`)*
+### 2\. Tampilan State Loading
 
-<img width="284" height="611" alt="image" src="https://github.com/user-attachments/assets/25b88f97-ea7d-4b2c-a211-f5e9d80ba7d5" />
+*(Indikator putaran saat fungsi asinkron Ktor sedang menunggu respons dari server)*
 
-### 3\. Tampilan Layar Tambah / Edit Catatan
 
-*(Layar saat navigasi form edit/add terbuka)*
 
-<img width="282" height="618" alt="image" src="https://github.com/user-attachments/assets/34208bce-735e-49b7-8b6a-f2cfdbf43cf8" />
+### 3\. Tampilan State Error
 
-### 4\. Tampilan Tab Profile Terintegrasi
+*(Penanganan error saat aplikasi gagal menerjemahkan data atau saat tidak ada koneksi internet)*
 
-*(Layar profil dari tugas sebelumnya yang kini masuk ke dalam tab navigasi)*
 
-<img width="285" height="613" alt="image" src="https://github.com/user-attachments/assets/ba7eae78-6629-4b56-afde-639ca276e1d9" />
+
+### 4\. Tampilan Detail Berita
+
+*(Navigasi passing argument yang membawa judul dan isi body artikel yang diklik)*
+
+
+
+### 5. Video Demo Aplikasi
+*(Video demonstrasi berjalannya aplikasi, menampilkan proses pengambilan data dari internet, efek loading, dan interaksi navigasi)*
+
+**Tonton Video Demo:** 
